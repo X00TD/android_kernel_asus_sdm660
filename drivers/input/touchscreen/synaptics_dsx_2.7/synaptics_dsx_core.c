@@ -1102,8 +1102,8 @@ static ssize_t synaptics_rmi4_virtual_key_map_show(struct kobject *kobj,
 }
 
 #ifdef CONFIG_MACH_ASUS_X00T
-long syna_gesture_mode;
-static int gesture_dt2w = 0;
+long syna_gesture_mode = 1;
+static int gesture_dt2w = 1;
 struct synaptics_rmi4_data *syna_rmi4_data;
 
 static ssize_t syna_gesture_mode_get_proc(struct file *file,
@@ -1138,6 +1138,7 @@ static ssize_t syna_gesture_mode_set_proc(struct file *filp,
 			syna_gesture_mode = 0;
 			syna_rmi4_data->enable_wakeup_gesture = 0;
 		} else {
+			gesture_dt2w = 1;
 			syna_gesture_mode = 0x1FF;
 			syna_rmi4_data->enable_wakeup_gesture = 1;
 		}
@@ -1539,6 +1540,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	int temp;
 #ifdef CONFIG_MACH_ASUS_X00T
 	int gesture_count= 0;
+	int is_double_tap = 0;
 	uint32_t keycode = 0;
 	int abs_x;
 	int abs_y;
@@ -1589,7 +1591,6 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 #endif
 
 		gesture_type = rmi4_data->gesture_detection[0];
-#ifdef CONFIG_MACH_ASUS_X00T
 		gesture_x_distance = rmi4_data->gesture_detection[1];
 		gesture_y_distance = rmi4_data->gesture_detection[2];
 
@@ -1601,6 +1602,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		if (gesture_type != F12_UDG_DETECT) {
 			switch (gesture_type) {
 			case F12_DOUBLECLICK_DETECT:
+				is_double_tap = 1;
 				pr_debug("Gesture: Double click.\n");
 				keycode = GESTURE_EVENT_DOUBLE_CLICK;
 				break;
@@ -1630,21 +1632,20 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 
 			pr_debug("Gesture: keycode = %ud.\n", keycode);
 			if (keycode > 0) {
-			input_report_key(rmi4_data->input_dev, keycode, 1);
-#else
-		if (gesture_type && gesture_type != F12_UDG_DETECT) {
-			input_report_key(rmi4_data->input_dev, KEY_WAKEUP, 1);
-#endif /* CONFIG_MACH_ASUS_X00T */
-			input_sync(rmi4_data->input_dev);
-#ifdef CONFIG_MACH_ASUS_X00T
-			input_report_key(rmi4_data->input_dev, keycode, 0);
-#else
-			input_report_key(rmi4_data->input_dev, KEY_WAKEUP, 0);
-#endif
-			input_sync(rmi4_data->input_dev);
-#ifdef CONFIG_MACH_ASUS_X00T
+				if (is_double_tap == 1) {
+					input_report_key(rmi4_data->input_dev, KEY_WAKEUP, 1);
+					input_sync(rmi4_data->input_dev);
+					input_report_key(rmi4_data->input_dev, KEY_WAKEUP, 0);
+					input_sync(rmi4_data->input_dev);
+					is_double_tap = 0;
+				} else {
+					input_report_key(rmi4_data->input_dev, keycode, 1);
+					input_sync(rmi4_data->input_dev);
+					input_report_key(rmi4_data->input_dev, keycode, 0);
+					input_sync(rmi4_data->input_dev);
+				}
 			}
-#endif
+
 			/* synaptics_rmi4_wakeup_gesture(rmi4_data, false); */
 			/* rmi4_data->suspend = false; */
 		}

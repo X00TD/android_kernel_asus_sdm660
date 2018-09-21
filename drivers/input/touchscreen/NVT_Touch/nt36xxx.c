@@ -410,9 +410,9 @@ const uint16_t gesture_key_array[] = {
 	GESTURE_EVENT_E,
 	GESTURE_EVENT_S,
 	GESTURE_EVENT_SWIPE_UP,
-	KEY_POWER,
-	KEY_POWER,
-	KEY_POWER,
+	KEY_WAKEUP,
+	KEY_WAKEUP,
+	KEY_WAKEUP,
 };
 /* Huaqin add by yuexinghan for gesture mode 20171030 end */
 #endif
@@ -424,8 +424,8 @@ static uint8_t bTouchIsAwake = 0;
 #define GESTURE_DT2W_NODE "double_tap"
 #define NVT_GESTURE_MODE "tpd_gesture"
 
-static int gesture_dt2w = 0;
-long gesture_mode = 0;
+static int gesture_dt2w = 1;
+long gesture_mode = 1;
 
 static ssize_t nvt_gesture_mode_get_proc(struct file *file,
                         char __user *buffer, size_t size, loff_t *ppos)
@@ -464,6 +464,7 @@ static ssize_t nvt_gesture_mode_set_proc(struct file *filp,
 		if (gesture_mode == 0) {
 			gesture_mode = 0;
 		} else {
+			gesture_dt2w = 1;
 			gesture_mode = 0x1FF;
 		}
 		/* Huaqin modify for upper layer definition by yuexinghan 20171108 end */
@@ -1125,6 +1126,7 @@ return:
 *******************************************************/
 void nvt_ts_wakeup_gesture_report(uint8_t gesture_id)
 {
+	int is_double_tap = 0;
 	uint32_t keycode = 0;
 
 	NVT_LOG("gesture_id = %d\n", gesture_id);
@@ -1150,7 +1152,8 @@ void nvt_ts_wakeup_gesture_report(uint8_t gesture_id)
 			}
 			break;
 		case ID_GESTURE_DOUBLE_CLICK:
-			if (gesture_mode & MASK_GESTURE_DOUBLE_CLICK) {
+			if (gesture_dt2w) {
+				is_double_tap = 1;
 				NVT_LOG("Gesture : Double Click.\n");
 				keycode = gesture_key_array[3];
 			}
@@ -1204,11 +1207,19 @@ void nvt_ts_wakeup_gesture_report(uint8_t gesture_id)
 			break;
 	}
 
-	if (keycode > 0) {
-		input_report_key(ts->input_dev, keycode, 1);
-		input_sync(ts->input_dev);
-		input_report_key(ts->input_dev, keycode, 0);
-		input_sync(ts->input_dev);
+	if (keycode > 0 ) {
+		if (is_double_tap == 1) {
+			input_report_key(ts->input_dev, KEY_WAKEUP, 1);
+			input_sync(ts->input_dev);
+			input_report_key(ts->input_dev, KEY_WAKEUP, 0);
+			input_sync(ts->input_dev);
+			is_double_tap = 0;
+		} else {
+			input_report_key(ts->input_dev, keycode, 1);
+			input_sync(ts->input_dev);
+			input_report_key(ts->input_dev, keycode, 0);
+			input_sync(ts->input_dev);
+		}
 	}
 }
 #endif
@@ -1967,7 +1978,7 @@ static int32_t nvt_ts_suspend(struct device *dev)
 
 #if WAKEUP_GESTURE
 	/* Huaqin add by yuexinghan for gesture mode 20171030 start */
-	if (((gesture_mode & 0x100) == 0) || ((gesture_mode & 0x0FF) == 0)) {
+	if (!gesture_mode && !gesture_dt2w) {
 // Huaqin add for ctp lose efficacy by zhengwu.lu. at 2018/04/18 For Platform start
 		//disable_irq(ts->client->irq);
 		nvt_irq_disable();
@@ -2023,7 +2034,7 @@ static int32_t nvt_ts_suspend(struct device *dev)
 
 	mutex_unlock(&ts->lock);
 // Huaqin add for vsp/vsn. by zhengwu.lu. at 2018/03/07  start
-	if (((gesture_mode & 0x100) == 0) || ((gesture_mode & 0x0FF) == 0)) {
+	if (!gesture_mode && !gesture_dt2w) {
 	nvt_lcm_power_source_ctrl(data, 0);//disable vsp/vsn
 	NVT_LOG("sleep suspend end  disable vsp/vsn\n");
 	}
