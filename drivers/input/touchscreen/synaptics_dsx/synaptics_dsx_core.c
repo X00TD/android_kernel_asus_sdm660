@@ -1144,6 +1144,7 @@ static ssize_t syna_gesture_mode_set_proc(struct file *filp,
 			syna_gesture_mode = 0;
 			syna_rmi4_data->enable_wakeup_gesture = 0;
 		} else {
+			gesture_dt2w = 1;
 			syna_gesture_mode = 0x1FF;
 			syna_rmi4_data->enable_wakeup_gesture = 1;
 		}
@@ -1544,6 +1545,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 	int temp;
 	/* Huaqin modify  for ZQL1650-1523 by diganyun at 2018/06/07 start */
 	int gesture_count= 0;
+	int is_double_tap = 0;
 	uint32_t keycode = 0;
 	int abs_x;
 	int abs_y;
@@ -1603,6 +1605,7 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 		if (gesture_type != F12_UDG_DETECT) {
 			switch (gesture_type) {
 				case F12_DOUBLECLICK_DETECT:
+					is_double_tap = 1;
 					pr_err("Gesture : Double click.\n");
 					keycode = GESTURE_EVENT_DOUBLE_CLICK;
 					break;
@@ -1631,10 +1634,18 @@ static int synaptics_rmi4_f12_abs_report(struct synaptics_rmi4_data *rmi4_data,
 			}
 			pr_err("Gesture : keycode = %ud.\n", keycode);
 			if (keycode > 0) {
-				input_report_key(rmi4_data->input_dev, keycode, 1);
-				input_sync(rmi4_data->input_dev);
-				input_report_key(rmi4_data->input_dev, keycode, 0);
-				input_sync(rmi4_data->input_dev);
+				if (is_double_tap == 1) {
+					input_report_key(rmi4_data->input_dev, KEY_WAKEUP, 1);
+					input_sync(rmi4_data->input_dev);
+					input_report_key(rmi4_data->input_dev, KEY_WAKEUP, 0);
+					input_sync(rmi4_data->input_dev);
+					is_double_tap = 0;
+				} else {
+					input_report_key(rmi4_data->input_dev, keycode, 1);
+					input_sync(rmi4_data->input_dev);
+					input_report_key(rmi4_data->input_dev, keycode, 0);
+					input_sync(rmi4_data->input_dev);
+				}
 			}
 
 			//synaptics_rmi4_wakeup_gesture(rmi4_data, false);
