@@ -468,12 +468,12 @@ int create_gesture_node(void) {
 
         error = sysfs_create_file(gesture_kobject, &gesture_attribute.attr);
         if (error) {
-                NVT_LOG("[Nvt-ts] : failed to create the gesture_node file in /sys/kernel/touchpanel \n");
+                NVT_LOG("[Nvt-ts] : failed to create /sys/kernel/touchpanel/dclicknode \n");
         }
 
         error2 = sysfs_create_file(gesture_kobject, &screengesture_attribute.attr);
-        if (error) {
-                NVT_LOG("[Nvt-ts] : failed to create the gesture_node file in /sys/kernel/touchpanel \n");
+        if (error2) {
+                NVT_LOG("[Nvt-ts] : failed to create /sys/kernel/touchpanel/gesture_node \n");
         }
 
         return error;
