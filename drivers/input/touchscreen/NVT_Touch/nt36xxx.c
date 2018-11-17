@@ -421,8 +421,10 @@ static uint8_t bTouchIsAwake = 0;
 
 /* Huaqin add by yuexinghan for gesture mode 20171030 start */
 #if WAKEUP_GESTURE
+#define GESTURE_DT2W_NODE "double_tap"
 #define NVT_GESTURE_MODE "tpd_gesture"
 
+static int gesture_dt2w = 0;
 long gesture_mode = 0;
 
 static ssize_t nvt_gesture_mode_get_proc(struct file *file,
@@ -479,6 +481,58 @@ static const struct file_operations gesture_mode_proc_ops = {
 	.owner = THIS_MODULE,
 	.read = nvt_gesture_mode_get_proc,
 	.write = nvt_gesture_mode_set_proc,
+};
+
+static ssize_t nvt_dt2w_get_proc(struct file *file,
+                        char __user *buffer, size_t size, loff_t *ppos)
+{
+	char ptr[64];
+	unsigned int len = 0;
+	unsigned int ret = 0;
+
+	if (gesture_dt2w == 0) {
+		len = sprintf(ptr, "0\n");
+	} else {
+		len = sprintf(ptr, "1\n");
+	}
+
+	ret = simple_read_from_buffer(buffer, size, ppos, ptr, (size_t)len);
+	return ret;
+}
+
+static ssize_t nvt_dt2w_set_proc(struct file *filp,
+                        const char __user *buffer, size_t count, loff_t *off)
+{
+	char msg[20];
+	int ret = 0;
+
+	ret = copy_from_user(msg, buffer, count);
+	if (ret) {
+		return -EFAULT;
+	}
+
+	ret = kstrtol(msg, 0, &gesture_dt2w);
+	if (!ret) {
+
+		if (gesture_dt2w == 0) {
+			gesture_dt2w = 0;
+		} else {
+			gesture_dt2w = 1;
+		}
+	}
+	else {
+		NVT_ERR("set gesture %s failed\n", GESTURE_DT2W_NODE);
+	}
+	NVT_LOG("gesture_dt2w = 0x%x\n", (unsigned int)gesture_dt2w);
+
+	return count;
+}
+
+static struct proc_dir_entry *nvt_dt2w_proc = NULL;
+static const struct file_operations dt2w_proc_ops = {
+	.owner = THIS_MODULE,
+	.read = nvt_dt2w_get_proc,
+	.write = nvt_dt2w_set_proc,
 };
 #endif
 /* Huaqin add by yuexinghan for gesture mode 20171030 end */
@@ -1762,7 +1816,13 @@ static int32_t nvt_ts_probe(struct i2c_client *client, const struct i2c_device_i
 	nvt_gesture_mode_proc = proc_create(NVT_GESTURE_MODE, 0666, NULL,
 				&gesture_mode_proc_ops);
 	if (!nvt_gesture_mode_proc) {
-		NVT_ERR("create proc tpd_gesture failed\n");
+		NVT_ERR("create proc %s failed\n",NVT_GESTURE_MODE);
+	}
+
+	nvt_dt2w_proc = proc_create(GESTURE_DT2W_NODE, 0666, NULL,
+				&dt2w_proc_ops);
+	if (!nvt_dt2w_proc) {
+		NVT_ERR("create proc %s failed\n",GESTURE_DT2W_NODE);
 	}
 #endif
 /* Huaqin add by yuexinghan for gesture mode 20171030 end */
