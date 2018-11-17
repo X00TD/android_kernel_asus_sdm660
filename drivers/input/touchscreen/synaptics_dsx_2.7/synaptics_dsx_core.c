@@ -157,6 +157,7 @@
 #define GESTURE_EVENT_SWIPE_UP 		0x2f6
 #define GESTURE_EVENT_DOUBLE_CLICK 	0x2f7
 
+#define GESTURE_DT2W_NODE 		"double_tap"
 #define SYNA_GESTURE_MODE 		"tpd_gesture"
 #endif
 
@@ -1102,6 +1103,7 @@ static ssize_t synaptics_rmi4_virtual_key_map_show(struct kobject *kobj,
 
 #ifdef CONFIG_MACH_ASUS_X00T
 long syna_gesture_mode;
+static int gesture_dt2w = 0;
 struct synaptics_rmi4_data *syna_rmi4_data;
 
 static ssize_t syna_gesture_mode_get_proc(struct file *file,
@@ -1154,6 +1156,54 @@ static const struct file_operations syna_gesture_mode_proc_ops = {
 	.owner = THIS_MODULE,
 	.read = syna_gesture_mode_get_proc,
 	.write = syna_gesture_mode_set_proc,
+};
+
+static ssize_t syna_dt2w_get_proc(struct file *file,
+                        char __user *buffer, size_t size, loff_t *ppos)
+{
+	char ptr[64];
+	unsigned int len = 0;
+	unsigned int ret = 0;
+
+	if (gesture_dt2w == 0)
+		len = sprintf(ptr, "0\n");
+	else
+		len = sprintf(ptr, "1\n");
+
+	ret = simple_read_from_buffer(buffer, size, ppos, ptr, (size_t)len);
+	return ret;
+}
+
+static ssize_t syna_dt2w_set_proc(struct file *filp,
+                        const char __user *buffer, size_t count, loff_t *off)
+{
+	char msg[20];
+	int ret = 0;
+
+	ret = copy_from_user(msg, buffer, count);
+	if (ret)
+		return -EFAULT;
+
+	ret = kstrtol(msg, 0, &gesture_dt2w);
+	if (!ret) {
+		if (gesture_dt2w == 0) {
+			gesture_dt2w = 0;
+		} else {
+			gesture_dt2w = 1;
+		}
+	} else
+		pr_err("set gesture %s failed\n", GESTURE_DT2W_NODE);
+
+	pr_err("gesture_dt2w = 0x%x\n", (unsigned int)gesture_dt2w);
+
+	return count;
+}
+
+static struct proc_dir_entry *syna_dt2w_proc = NULL;
+static const struct file_operations syna_dt2w_proc_ops = {
+	.owner = THIS_MODULE,
+	.read = syna_dt2w_get_proc,
+	.write = syna_dt2w_set_proc,
 };
 #endif /* CONFIG_MACH_ASUS_X00T */
 
@@ -4693,7 +4743,12 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 	syna_gesture_mode_proc = proc_create(SYNA_GESTURE_MODE, 0666, NULL,
 					&syna_gesture_mode_proc_ops);
 	if (!syna_gesture_mode_proc)
-		pr_err("create proc tpd_gesture failed\n");
+		pr_err("create proc %s failed\n",SYNA_GESTURE_MODE);
+
+	syna_dt2w_proc = proc_create(GESTURE_DT2W_NODE, 0666, NULL,
+					&syna_dt2w_proc_ops);
+	if (!syna_dt2w_proc)
+		pr_err("create proc %s failed\n",GESTURE_DT2W_NODE);
 #endif
 
 	rmi4_data->rb_workqueue =
