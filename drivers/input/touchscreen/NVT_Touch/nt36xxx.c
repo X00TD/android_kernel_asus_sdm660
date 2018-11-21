@@ -424,8 +424,8 @@ static uint8_t bTouchIsAwake = 0;
 #define GESTURE_DT2W_NODE "double_tap"
 #define NVT_GESTURE_MODE "tpd_gesture"
 
-static int gesture_dt2w = 0;
-long gesture_mode = 0;
+static int gesture_dt2w = 1;
+long gesture_mode = 1;
 
 static ssize_t nvt_gesture_mode_get_proc(struct file *file,
                         char __user *buffer, size_t size, loff_t *ppos)

@@ -1107,8 +1107,8 @@ static ssize_t synaptics_rmi4_virtual_key_map_show(struct kobject *kobj,
 
 /* Huaqin modify  for ZQL1650-1523 by diganyun at 2018/06/07 start */
 
-long syna_gesture_mode = 0;
-static int gesture_dt2w = 0;
+long syna_gesture_mode = 1;
+static int gesture_dt2w = 1;
 struct synaptics_rmi4_data *syna_rmi4_data;
 
 static ssize_t syna_gesture_mode_get_proc(struct file *file,
